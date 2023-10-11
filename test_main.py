@@ -123,7 +123,6 @@ def test_get_movies_list(test_db):
     response = client.get(f"/movies")
     assert response.status_code == 200, response.text
     data = response.json()
-    print(data)
     assert data[0]["title"] == "Shrek"
     assert data[0]["id"] == first_movie_id
     assert data[1]["title"] == "Shrek 2"
