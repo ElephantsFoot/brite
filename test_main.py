@@ -1,8 +1,11 @@
+from typing import Generator
+
 import pytest
+from _pytest.fixtures import FixtureFunction
 from fastapi.testclient import TestClient
 from requests.auth import HTTPBasicAuth
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.pool import StaticPool
 
 from database import get_db, Base
@@ -16,7 +19,7 @@ TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engin
 Base.metadata.create_all(bind=engine)
 
 
-def override_get_db():
+def override_get_db() -> Generator[Session, None, None]:
     db = TestingSessionLocal()
     try:
         yield db
@@ -37,7 +40,7 @@ app.dependency_overrides[get_db] = override_get_db
 client = TestClient(app)
 
 
-def test_create_movie(test_db):
+def test_create_movie(test_db: FixtureFunction) -> None:
     response = client.post("/movies/", json={"title": "Shrek"}, )
     assert response.status_code == 200, response.text
     data = response.json()
@@ -53,7 +56,21 @@ def test_create_movie(test_db):
     assert data["id"] == movie_id
 
 
-def test_create_existing_movie(test_db):
+def test_create_movie_no_info(test_db: FixtureFunction) -> None:
+    response = client.post("/movies/", json={"title": "notexist42"}, )
+    assert response.status_code == 400, response.text
+    data = response.json()
+    assert data["detail"] == "Cannot get info for this movie"
+
+
+def test_movie_not_found(test_db: FixtureFunction) -> None:
+    response = client.get("/movies/42")
+    assert response.status_code == 404, response.text
+    data = response.json()
+    assert data["detail"] == "Movie not found"
+
+
+def test_create_existing_movie(test_db: FixtureFunction) -> None:
     response = client.post("/movies/", json={"title": "Shrek"}, )
     assert response.status_code == 200, response.text
     data = response.json()
@@ -67,21 +84,21 @@ def test_create_existing_movie(test_db):
     assert data["detail"] == "Movie already exist"
 
 
-def test_delete_movie_no_auth(test_db):
+def test_delete_movie_no_auth(test_db: FixtureFunction) -> None:
     response = client.delete("/movies/42")
     assert response.status_code == 401, response.text
     data = response.json()
     assert data["detail"] == "Not authenticated"
 
 
-def test_delete_movie_wrong_password(test_db):
+def test_delete_movie_wrong_password(test_db: FixtureFunction) -> None:
     response = client.delete("/movies/42", auth=HTTPBasicAuth('stanleyjobson', 'wrong'))
     assert response.status_code == 401, response.text
     data = response.json()
     assert data["detail"] == "Incorrect email or password"
 
 
-def test_delete_movie(test_db):
+def test_delete_movie(test_db: FixtureFunction) -> None:
     response = client.post("/movies/", json={"title": "Shrek"}, )
     assert response.status_code == 200, response.text
     data = response.json()
@@ -96,14 +113,14 @@ def test_delete_movie(test_db):
     assert data["ok"]
 
 
-def test_delete_movie_not_found(test_db):
+def test_delete_movie_not_found(test_db: FixtureFunction) -> None:
     response = client.delete("/movies/42", auth=HTTPBasicAuth('stanleyjobson', 'swordfish'))
     assert response.status_code == 404, response.text
     data = response.json()
     assert data["detail"] == "Movie not found"
 
 
-def test_get_movies_list(test_db):
+def test_get_movies_list(test_db: FixtureFunction) -> None:
     response = client.post("/movies/", json={"title": "Shrek"}, )
     assert response.status_code == 200, response.text
     data = response.json()

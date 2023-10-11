@@ -9,7 +9,7 @@ security = HTTPBasic()
 
 def get_current_username(
     credentials: Annotated[HTTPBasicCredentials, Depends(security)]
-):
+) -> str:
     current_username_bytes = credentials.username.encode("utf8")
     correct_username_bytes = b"stanleyjobson"
     is_correct_username = secrets.compare_digest(
