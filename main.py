@@ -11,7 +11,7 @@ from database import engine, get_db
 from omdb import get_movie_info
 from on_db_create import populate_db
 
-models.Base.metadata.create_all(bind=engine)
+models.Base.metadata.create_all(bind=engine, checkfirst=True)
 populate_db()
 
 app = FastAPI()
